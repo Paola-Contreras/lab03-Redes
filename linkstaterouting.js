@@ -132,18 +132,21 @@ class LinkStateRouting {
     }
 
     getPreviousNodeInPath(sourceNode, currentNode) {
-        const shortestDistance = this.shortestPaths.get(sourceNode.name).get(currentNode);
-        let previousNode = null;
-
-        for (const [neighborName, neighborDistance] of this.shortestPaths.get(sourceNode.name).entries()) {
-            if (currentNode.neighbors.has(neighborName) && neighborDistance + currentNode.neighbors.get(neighborName) === shortestDistance) {
-                previousNode = neighborName;
-                break;
+        if (this.shortestPaths.has(sourceNode.name) && this.shortestPaths.get(sourceNode.name).has(currentNode)) {
+            const shortestDistance = this.shortestPaths.get(sourceNode.name).get(currentNode);
+            let previousNode = null;
+    
+            for (const [neighborName, neighborDistance] of this.shortestPaths.get(sourceNode.name).entries()) {
+                if (currentNode.neighbors.has(neighborName) && neighborDistance + currentNode.neighbors.get(neighborName) === shortestDistance) {
+                    previousNode = neighborName;
+                    break;
+                }
             }
+            return previousNode;
         }
-
-        return previousNode;
+        return null; // Devuelve null si no se encuentra la ruta.
     }
+    
 }
 
 class NodeDistance {
