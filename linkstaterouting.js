@@ -1,4 +1,5 @@
 const readline = require('readline');
+const fs = require('fs');
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
@@ -9,14 +10,19 @@ class LinkState {
     this.nombre = '';
     this.vecinos_pesos = [];
     this.tabla_enrutamiento = {};
-    this.topologia = {
-      'A': [['B', 4], ['C', 2]],
-      'B': [['A', 4]],
-      'C': [['C', 2]],
-    };
+    this.loadTopology();
     this.dijkstra();
   }
 
+  mostrarTablaNodos() {
+    console.log("Tabla de nodos con sus pesos:");
+    for (const nodo in this.topologia) {
+      console.log(`${nodo}:`);
+      for (const relacion of this.topologia[nodo]) {
+        console.log(`  -> ${relacion[0]} (Peso: ${relacion[1]})`);
+      }
+    }
+  }
   camino(destination) {
     const path = [destination];
     while (this.anterior[destination] !== null) {
@@ -42,6 +48,29 @@ class LinkState {
       console.log("Manda:", mensaje);
       console.log("El siguiente nodo en el camino es:", this.siguienteNodo(receptor));
     }
+  }
+
+  loadTopology() {
+    try {
+      const data = fs.readFileSync('topologia.json', 'utf8');
+      this.topologia = JSON.parse(data);
+    } catch (err) {
+      this.topologia = {};
+    }
+  }
+
+  saveTopology() {
+    const data = JSON.stringify(this.topologia, null, 2);
+    fs.writeFileSync('topologia.json', data, 'utf8');
+  }
+
+  agregarRelacion(nodo1, nodo2, peso) {
+    if (!this.topologia[nodo1]) {
+      this.topologia[nodo1] = [];
+    }
+    this.topologia[nodo1].push([nodo2, peso]);
+    this.saveTopology();
+    console.log(`Relación agregada: ${nodo1} -> ${nodo2} (Peso: ${peso})`);
   }
 
   dijkstra() {
@@ -88,7 +117,9 @@ let opcion = '0';
 function main() {
   console.log("\n1. Enviar mensaje");
   console.log("2. Recibir mensaje");
-  console.log("3. Salir");
+  console.log("3. Agregar relación a la topología");
+  console.log("4. Mostrar tabla de nodos con sus pesos"); // Nueva opción
+  console.log("5. Salir");
 
   rl.question(">> ", (respuesta) => {
     opcion = respuesta;
@@ -111,7 +142,19 @@ function main() {
           });
         });
       });
-    } else if (opcion === "3") {
+    } else if (opcion === "3") { 
+      rl.question("Primer nodo:\n>> ", (nodo1) => {
+        rl.question("Segundo nodo:\n>> ", (nodo2) => {
+          rl.question("Peso de la relación:\n>> ", (peso) => {
+            node.agregarRelacion(nodo1, nodo2, parseInt(peso));
+            main();
+          });
+        });
+      });
+    } else if (opcion === "4") {
+      node.mostrarTablaNodos(); // Mostrar tabla de nodos con sus pesos
+      main();
+    } else if (opcion === "5") {
       rl.close();
     } else {
       console.log("Opción no válida. Intente de nuevo.");
