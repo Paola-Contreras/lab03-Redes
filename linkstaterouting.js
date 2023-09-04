@@ -1,220 +1,166 @@
-class Node {
-    constructor(name) {
-        this.name = name;
-        this.neighbors = new Map();
+const readline = require('readline');
+const fs = require('fs');
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+class LinkState {
+  constructor() {
+    this.nombre = '';
+    this.vecinos_pesos = [];
+    this.tabla_enrutamiento = {};
+    this.loadTopology();
+    this.dijkstra();
+  }
+
+  mostrarTablaNodos() {
+    console.log("Tabla de nodos con sus pesos:");
+    for (const nodo in this.topologia) {
+      console.log(`${nodo}:`);
+      for (const relacion of this.topologia[nodo]) {
+        console.log(`  -> ${relacion[0]} (Peso: ${relacion[1]})`);
+      }
+    }
+  }
+  camino(destination) {
+    const path = [destination];
+    while (this.anterior[destination] !== null) {
+      destination = this.anterior[destination];
+      path.unshift(destination);
+    }
+    return path;
+  }
+
+  siguienteNodo(destination) {
+    const path = this.camino(destination);
+    if (path.length > 1) {
+      return path[1];
+    }
+    return path[0];
+  }
+
+  recibirMensaje(emisor, receptor, mensaje) {
+    if (this.nombre === receptor) {
+      console.log("Mensaje recibido:", mensaje);
+    } else {
+      console.log("De:", emisor);
+      console.log("Manda:", mensaje);
+      console.log("El siguiente nodo en el camino es:", this.siguienteNodo(receptor));
+    }
+  }
+
+  loadTopology() {
+    try {
+      const data = fs.readFileSync('topologia.json', 'utf8');
+      this.topologia = JSON.parse(data);
+    } catch (err) {
+      this.topologia = {};
+    }
+  }
+
+  saveTopology() {
+    const data = JSON.stringify(this.topologia, null, 2);
+    fs.writeFileSync('topologia.json', data, 'utf8');
+  }
+
+  agregarRelacion(nodo1, nodo2, peso) {
+    if (!this.topologia[nodo1]) {
+      this.topologia[nodo1] = [];
+    }
+    this.topologia[nodo1].push([nodo2, peso]);
+    this.saveTopology();
+    console.log(`Relación agregada: ${nodo1} -> ${nodo2} (Peso: ${peso})`);
+  }
+
+  dijkstra() {
+    this.distancias = {};
+    this.anterior = {};
+    this.fila = [];
+
+    for (const node in this.topologia) {
+      if (node === this.nombre) {
+        this.distancias[node] = 0;
+        this.fila.push([0, node]);
+      } else {
+        this.distancias[node] = Infinity;
+        this.fila.push([Infinity, node]);
+      }
+      this.anterior[node] = null;
     }
 
-    addNeighbor(neighborName, distance) {
-        this.neighbors.set(neighborName, distance);
+    while (this.fila.length > 0) {
+      this.fila.sort((a, b) => a[0] - b[0]);
+      const u = this.fila.shift()[1];
+
+      for (const v of this.topologia[u]) {
+        const alt = this.distancias[u] + v[1];
+        if (alt < this.distancias[v[0]]) {
+          this.distancias[v[0]] = alt;
+          this.anterior[v[0]] = u;
+        }
+      }
     }
+
+    for (const node in this.anterior) {
+      if (this.anterior[node] !== null) {
+        const path = this.camino(node);
+        this.tabla_enrutamiento[node] = [path, this.distancias[node]];
+      }
+    }
+  }
 }
 
-class Packet {
-    constructor(type, headers, payload) {
-        this.type = type;
-        this.headers = headers;
-        this.payload = payload;
-    }
+const node = new LinkState();
+let opcion = '0';
 
-    toJson() {
-        return JSON.stringify({
-            type: this.type,
-            headers: this.headers,
-            payload: this.payload,
-        }, null, 2);
+function main() {
+  console.log("\n1. Enviar mensaje");
+  console.log("2. Recibir mensaje");
+  console.log("3. Agregar relación a la topología");
+  console.log("4. Mostrar tabla de nodos con sus pesos"); // Nueva opción
+  console.log("5. Salir");
+
+  rl.question(">> ", (respuesta) => {
+    opcion = respuesta;
+
+    if (opcion === "1") {
+      rl.question("Mensaje:\n>> ", (mensaje) => {
+        rl.question("Destino:\n>> ", (destino) => {
+          const siguiente = node.siguienteNodo(destino);
+          console.log("Mensaje:", mensaje);
+          console.log("Siguiente nodo:", siguiente);
+          main();
+        });
+      });
+    } else if (opcion === "2") {
+      rl.question("Ingrese el emisor:\n>> ", (emisor) => {
+        rl.question("Ingrese el receptor:\n>> ", (receptor) => {
+          rl.question("Ingrese el mensaje:\n>> ", (mensaje) => {
+            node.recibirMensaje(emisor, receptor, mensaje);
+            main();
+          });
+        });
+      });
+    } else if (opcion === "3") { 
+      rl.question("Primer nodo:\n>> ", (nodo1) => {
+        rl.question("Segundo nodo:\n>> ", (nodo2) => {
+          rl.question("Peso de la relación:\n>> ", (peso) => {
+            node.agregarRelacion(nodo1, nodo2, parseInt(peso));
+            main();
+          });
+        });
+      });
+    } else if (opcion === "4") {
+      node.mostrarTablaNodos(); // Mostrar tabla de nodos con sus pesos
+      main();
+    } else if (opcion === "5") {
+      rl.close();
+    } else {
+      console.log("Opción no válida. Intente de nuevo.");
+      main();
     }
+  });
 }
 
-class LinkStateRouting {
-    constructor() {
-        this.network = new Map();
-        this.shortestPaths = new Map();
-    }
-
-    addNode(node) {
-        this.network.set(node.name, node);
-    }
-
-    computeShortestPaths() {
-        for (const node of this.network.values()) {
-            const shortestPath = this.computeShortestPath(node);
-            this.shortestPaths.set(node.name, shortestPath);
-        }
-    }
-
-    sendPacket(sourceNode, destinationNode, hopCount, payload) {
-        const headers = {
-            from: sourceNode,
-            to: destinationNode,
-            hop_count: hopCount.toString(),
-        };
-
-        const packet = new Packet("message", headers, payload);
-
-        console.log(`Sending packet from ${sourceNode} to ${destinationNode}`);
-        console.log(packet.toJson());
-        console.log();
-    }
-
-    sendMessage(sourceNode, destinationNode, message) {
-        const shortestPath = this.findShortestPath(sourceNode, destinationNode);
-
-        if (shortestPath === "No path found.") {
-            console.log("No path found for sending the message.");
-        } else {
-            const pathNodes = shortestPath.split(" -> ");
-            let hopCount = 1;
-
-            console.log(`Sending message from ${sourceNode} to ${destinationNode} through path: ${shortestPath}`);
-
-            for (let i = 0; i < pathNodes.length - 1; i++) {
-                const currentNode = pathNodes[i];
-                const nextNode = pathNodes[i + 1];
-
-                this.sendPacket(currentNode, nextNode, hopCount, message);
-                hopCount++;
-            }
-        }
-    }
-
-    computeShortestPath(sourceNode) {
-        const pq = new PriorityQueue();
-        pq.offer(new NodeDistance(sourceNode, 0));
-
-        const distanceMap = new Map();
-        distanceMap.set(sourceNode.name, 0);
-
-        while (!pq.isEmpty()) {
-            const nd = pq.poll();
-            const currentNode = nd.node;
-            const currentDistance = nd.distance;
-
-            for (const [neighborName, neighborDistance] of currentNode.neighbors.entries()) {
-                const newDistance = currentDistance + neighborDistance;
-
-                if (!distanceMap.has(neighborName) || newDistance < distanceMap.get(neighborName)) {
-                    distanceMap.set(neighborName, newDistance);
-                    pq.offer(new NodeDistance(this.network.get(neighborName), newDistance));
-                }
-            }
-        }
-
-        return distanceMap;
-    }
-
-    printRoutingTable() {
-        for (const node of this.network.values()) {
-            console.log(`Routing table for Node ${node.name}:`);
-            for (const [neighborName, neighborDistance] of node.neighbors.entries()) {
-                console.log(`To Node ${neighborName} via ${neighborName}, Distance: ${this.shortestPaths.get(node.name).get(neighborName)}`);
-            }
-            console.log();
-        }
-    }
-
-    findShortestPath(fromNode, toNode) {
-        if (!this.shortestPaths.has(fromNode.name) || !this.shortestPaths.get(fromNode.name).has(toNode.name)) {
-            return "No path found.";
-        }
-
-        const path = [];
-        let currentNode = toNode.name;
-
-        while (currentNode !== fromNode.name) {
-            path.push(currentNode);
-            currentNode = this.getPreviousNodeInPath(fromNode.name, currentNode);
-        }
-
-        path.push(fromNode.name);
-        path.reverse();
-
-        return path.join(" -> ");
-    }
-
-    getPreviousNodeInPath(sourceNode, currentNode) {
-        const shortestDistance = this.shortestPaths.get(sourceNode.name).get(currentNode);
-        let previousNode = null;
-
-        for (const [neighborName, neighborDistance] of this.shortestPaths.get(sourceNode.name).entries()) {
-            if (currentNode.neighbors.has(neighborName) && neighborDistance + currentNode.neighbors.get(neighborName) === shortestDistance) {
-                previousNode = neighborName;
-                break;
-            }
-        }
-
-        return previousNode;
-    }
-}
-
-class NodeDistance {
-    constructor(node, distance) {
-        this.node = node;
-        this.distance = distance;
-    }
-}
-
-class PriorityQueue {
-    constructor() {
-        this.queue = [];
-    }
-
-    offer(item) {
-        this.queue.push(item);
-        this.queue.sort((a, b) => a.distance - b.distance);
-    }
-
-    poll() {
-        return this.queue.shift();
-    }
-
-    isEmpty() {
-        return this.queue.length === 0;
-    }
-}
-
-const router = new LinkStateRouting();
-
-const nodeA = new Node("A");
-const nodeB = new Node("B");
-const nodeC = new Node("C");
-const nodeD = new Node("D");
-const nodeE = new Node("E");
-const nodeF = new Node("F");
-
-nodeA.addNeighbor("B", 1);
-nodeA.addNeighbor("C", 2);
-
-nodeB.addNeighbor("A", 1);
-nodeB.addNeighbor("C", 3);
-nodeB.addNeighbor("D", 4);
-
-nodeC.addNeighbor("A", 2);
-nodeC.addNeighbor("B", 3);
-nodeC.addNeighbor("D", 2);
-nodeC.addNeighbor("E", 5);
-
-nodeD.addNeighbor("B", 4);
-nodeD.addNeighbor("C", 2);
-nodeD.addNeighbor("E", 1);
-
-nodeE.addNeighbor("C", 5);
-nodeE.addNeighbor("D", 1);
-nodeE.addNeighbor("F", 3);
-
-nodeF.addNeighbor("E", 3);
-
-router.addNode(nodeA);
-router.addNode(nodeB);
-router.addNode(nodeC);
-router.addNode(nodeD);
-router.addNode(nodeE);
-router.addNode(nodeF);
-
-router.computeShortestPaths();
-router.printRoutingTable();
-
-const sourceNode = nodeA;
-const destinationNode = nodeF;
-const message = "Hola mundo";
-
-router.sendMessage(sourceNode, destinationNode, message);
+main();
