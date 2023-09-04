@@ -1,0 +1,13 @@
+{
+  "type": "message",
+  "headers": {
+    "messageId": "18a72461a7f-86821a91c6482",
+    "from": "pao",
+    "to": "tay",
+    "hop_count": 0,
+    "recievers": [
+      "pao"
+    ]
+  },
+  "payload": "hola pao"
+}
