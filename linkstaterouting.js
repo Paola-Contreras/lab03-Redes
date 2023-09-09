@@ -1,9 +1,38 @@
-const readline = require('readline');
+/////////////////////////////////////////////////////////
+
+
 const fs = require('fs');
+const readline = require('readline');
+const Server = require('./Connection');
+const { xml, client } = require('@xmpp/client');
+
+let vecin = [];
+let matrix = [];
+let topology = {};
+let actual_node = "";
+let nodoIngresado = false;
+const password = "redes2023";
+const topog4 = 'topo-g4.txt';
+const namesg4 = 'names-g4.txt';
+
 const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
+    input: process.stdin,
+    output: process.stdout
 });
+
+async function ask_nodo() {
+    return new Promise((resolve) => {
+        if (!nodoIngresado) {
+            rl.question("Qué nodo eres: ", (node) => {
+                actual_node = node;
+                nodoIngresado = true;
+                resolve();
+            });
+        } else {
+            resolve();
+        }
+    });
+}
 
 class LinkState {
   constructor() {
@@ -52,16 +81,21 @@ class LinkState {
 
   loadTopology() {
     try {
-      const data = fs.readFileSync('topologia.json', 'utf8');
-      this.topologia = JSON.parse(data);
+        const data = fs.readFileSync(topog4, 'utf8');
+        const jsonData = JSON.parse(data);
+        if (jsonData.type === "topo" && jsonData.config) {
+            this.topologia = jsonData.config;
+        }
     } catch (err) {
-      this.topologia = {};
+        console.error(`Error al leer ${topog4}: ${err}`);
     }
-  }
+}
+
+
 
   saveTopology() {
     const data = JSON.stringify(this.topologia, null, 2);
-    fs.writeFileSync('topologia.json', data, 'utf8');
+    fs.writeFileSync('topo-g4.txt', data, 'utf8');
   }
 
   agregarRelacion(nodo1, nodo2, peso) {
@@ -79,88 +113,120 @@ class LinkState {
     this.fila = [];
 
     for (const node in this.topologia) {
-      if (node === this.nombre) {
-        this.distancias[node] = 0;
-        this.fila.push([0, node]);
-      } else {
-        this.distancias[node] = Infinity;
-        this.fila.push([Infinity, node]);
-      }
-      this.anterior[node] = null;
+        if (node === this.nombre) {
+            this.distancias[node] = 0;
+            this.fila.push([0, node]);
+        } else {
+            this.distancias[node] = Infinity;
+            this.fila.push([Infinity, node]);
+        }
+        this.anterior[node] = null;
     }
 
     while (this.fila.length > 0) {
-      this.fila.sort((a, b) => a[0] - b[0]);
-      const u = this.fila.shift()[1];
+        this.fila.sort((a, b) => a[0] - b[0]);
+        const u = this.fila.shift()[1];
 
-      for (const v of this.topologia[u]) {
-        const alt = this.distancias[u] + v[1];
-        if (alt < this.distancias[v[0]]) {
-          this.distancias[v[0]] = alt;
-          this.anterior[v[0]] = u;
-        }
+        for (const neighbor of this.topologia[u]) { // Cambio de for...of
+            const v = neighbor.node;
+            const alt = this.distancias[u] + neighbor.weight;
+            if (alt < this.distancias[v]) {
+                this.distancias[v] = alt;
+                this.anterior[v] = u;
+            }
+          
+          }  
       }
-    }
-
-    for (const node in this.anterior) {
-      if (this.anterior[node] !== null) {
-        const path = this.camino(node);
-        this.tabla_enrutamiento[node] = [path, this.distancias[node]];
-      }
-    }
   }
 }
 
 const node = new LinkState();
-let opcion = '0';
 
-function main() {
-  console.log("\n1. Enviar mensaje");
-  console.log("2. Recibir mensaje");
-  console.log("3. Agregar relación a la topología");
-  console.log("4. Mostrar tabla de nodos con sus pesos"); // Nueva opción
-  console.log("5. Salir");
+async function processLogin(user, password) {
+    const parts = user.split('@');
+    const username = parts[0];
 
-  rl.question(">> ", (respuesta) => {
-    opcion = respuesta;
+    console.log(`\n--- Bienvenida ${username} ---`);
 
-    if (opcion === "1") {
-      rl.question("Mensaje:\n>> ", (mensaje) => {
-        rl.question("Destino:\n>> ", (destino) => {
-          const siguiente = node.siguienteNodo(destino);
-          console.log("Mensaje:", mensaje);
-          console.log("Siguiente nodo:", siguiente);
-          main();
-        });
-      });
-    } else if (opcion === "2") {
-      rl.question("Ingrese el emisor:\n>> ", (emisor) => {
-        rl.question("Ingrese el receptor:\n>> ", (receptor) => {
-          rl.question("Ingrese el mensaje:\n>> ", (mensaje) => {
-            node.recibirMensaje(emisor, receptor, mensaje);
-            main();
-          });
-        });
-      });
-    } else if (opcion === "3") { 
-      rl.question("Primer nodo:\n>> ", (nodo1) => {
-        rl.question("Segundo nodo:\n>> ", (nodo2) => {
-          rl.question("Peso de la relación:\n>> ", (peso) => {
-            node.agregarRelacion(nodo1, nodo2, parseInt(peso));
-            main();
-          });
-        });
-      });
-    } else if (opcion === "4") {
-      node.mostrarTablaNodos(); // Mostrar tabla de nodos con sus pesos
-      main();
-    } else if (opcion === "5") {
-      rl.close();
-    } else {
-      console.log("Opción no válida. Intente de nuevo.");
-      main();
+    await getTopology(topog4);
+    mainMenu();
+}
+
+async function getTopology(filePath) {
+    try {
+        const data = await fs.promises.readFile(filePath, 'utf8');
+        const lines = data.split('\n');
+        for (const line of lines) {
+            const [node1, node2, weight] = line.split(' ');
+            if (!topology[node1]) {
+                topology[node1] = [];
+            }
+            if (!topology[node2]) {
+                topology[node2] = [];
+            }
+            topology[node1].push({ node: node2, weight: parseFloat(weight) });
+            topology[node2].push({ node: node1, weight: parseFloat(weight) });
+        }
+    } catch (err) {
+        console.error(`Error al leer ${filePath}: ${err}`);
     }
-  });
+}
+
+function mainMenu() {
+    console.log("\n--- MENU PARA SIMULAR ---");
+    console.log("1. Enviar Mensaje");
+    console.log("2. Recibir Mensaje");
+    console.log("3. Ver Topología");
+    console.log("4. Salir");
+
+    rl.question("Ingresa tu selección: ", function (choice) {
+        Choice_FuncMenu(choice);
+    });
+}
+
+function Choice_FuncMenu(choice) {
+    switch (choice) {
+        case "1":
+            // Implementa lógica para enviar mensajes
+            break;
+        case "2":
+            // Implementa lógica para recibir mensajes
+            break;
+        case "3":
+            console.log("Topología:");
+            console.log(topology);
+            mainMenu();
+            break;
+        case "4":
+            rl.close();
+            break;
+        default:
+            console.log("Opción no válida. Intente de nuevo.");
+            mainMenu();
+            break;
+    }
+}
+
+async function get_email(archivo, clave) {
+  try {
+    const data = await fs.promises.readFile(archivo, 'utf8');
+    const config = JSON.parse(data);
+
+    if (config.config.hasOwnProperty(clave)) {
+      const valor = config.config[clave];
+      return valor;
+    } else {
+      console.log(`La clave ${clave} no existe en el objeto "config".`);
+    }
+  } catch (err) {
+    console.error(`Error al leer ${archivo}: ${err}`);
+  }
+}
+
+async function main() {
+    await ask_nodo();
+    user = await get_email(namesg4, actual_node);
+    await processLogin(user, password);
 }
 
 main();
