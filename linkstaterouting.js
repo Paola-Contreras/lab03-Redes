@@ -81,15 +81,14 @@ class LinkState {
 
   loadTopology() {
     try {
-        const data = fs.readFileSync(topog4, 'utf8');
-        const jsonData = JSON.parse(data);
-        if (jsonData.type === "topo" && jsonData.config) {
-            this.topologia = jsonData.config;
-        }
+      const data = fs.readFileSync('topo-g4.txt', 'utf8');
+      const topology = JSON.parse(data);
+      this.topologia = topology.config; // Asignar la topología desde el archivo
     } catch (err) {
-        console.error(`Error al leer ${topog4}: ${err}`);
+      this.topologia = {};
+      console.error('Error al cargar la topología desde el archivo:', err);
     }
-}
+  }
 
 
 
@@ -153,59 +152,54 @@ async function processLogin(user, password) {
 }
 
 async function getTopology(filePath) {
-    try {
-        const data = await fs.promises.readFile(filePath, 'utf8');
-        const lines = data.split('\n');
-        for (const line of lines) {
-            const [node1, node2, weight] = line.split(' ');
-            if (!topology[node1]) {
-                topology[node1] = [];
-            }
-            if (!topology[node2]) {
-                topology[node2] = [];
-            }
-            topology[node1].push({ node: node2, weight: parseFloat(weight) });
-            topology[node2].push({ node: node1, weight: parseFloat(weight) });
-        }
-    } catch (err) {
-        console.error(`Error al leer ${filePath}: ${err}`);
-    }
+  try {
+      const data = await fs.promises.readFile(filePath, 'utf8');
+      const topology = JSON.parse(data); // Analiza el JSON directamente
+
+      // Asigna la topología al objeto de la instancia de la clase LinkState
+      node.topologia = topology.config;
+  } catch (err) {
+      console.error(`Error al leer ${filePath}: ${err}`);
+  }
 }
 
-function mainMenu() {
-    console.log("\n--- MENU PARA SIMULAR ---");
-    console.log("1. Enviar Mensaje");
-    console.log("2. Recibir Mensaje");
-    console.log("3. Ver Topología");
-    console.log("4. Salir");
 
-    rl.question("Ingresa tu selección: ", function (choice) {
-        Choice_FuncMenu(choice);
-    });
+function mainMenu() {
+  console.log("\n--- MENU PARA SIMULAR ---");
+  console.log("1. Enviar Mensaje");
+  console.log("2. Recibir Mensaje");
+  console.log("3. Ver Topología");
+  console.log("4. Salir");
+
+  rl.question("Ingresa tu selección: ", function (choice) {
+      Choice_FuncMenu(choice);
+  });
 }
 
 function Choice_FuncMenu(choice) {
-    switch (choice) {
-        case "1":
-            // Implementa lógica para enviar mensajes
-            break;
-        case "2":
-            // Implementa lógica para recibir mensajes
-            break;
-        case "3":
-            console.log("Topología:");
-            console.log(topology);
-            mainMenu();
-            break;
-        case "4":
-            rl.close();
-            break;
-        default:
-            console.log("Opción no válida. Intente de nuevo.");
-            mainMenu();
-            break;
-    }
+  switch (choice) {
+      case "1":
+          // Implementa lógica para enviar mensajes
+          break;
+      case "2":
+          // Implementa lógica para recibir mensajes
+          break;
+      case "3":
+          console.log("Topología:");
+          // Imprimir la topología desde la instancia de la clase LinkState
+          console.log(node.topologia);
+          mainMenu();
+          break;
+      case "4":
+          rl.close();
+          break;
+      default:
+          console.log("Opción no válida. Intente de nuevo.");
+          mainMenu();
+          break;
+  }
 }
+
 
 async function get_email(archivo, clave) {
   try {
