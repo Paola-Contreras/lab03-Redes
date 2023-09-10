@@ -21,27 +21,37 @@ const rl = readline.createInterface({
 });
 
 async function ask_nodo() {
-    return new Promise((resolve) => {
-        if (!nodoIngresado) {
-            rl.question("Qué nodo eres: ", (node) => {
-                actual_node = node;
-                nodoIngresado = true;
-                resolve();
-            });
-        } else {
-            resolve();
-        }
-    });
+  return new Promise((resolve) => {
+      if (!nodoIngresado) {
+          rl.question("Qué nodo eres: ", (node) => {
+              actual_node = node;
+              nodoIngresado = true;
+              node.nombre = actual_node; // Asignar el nombre del nodo a la instancia de la clase LinkState
+              resolve();
+          });
+      } else {
+          resolve();
+      }
+  });
 }
+
 
 class LinkState {
   constructor() {
     this.nombre = '';
-    this.vecinos_pesos = [];
-    this.tabla_enrutamiento = {};
+    this.topologia = {}; 
     this.loadTopology();
     this.dijkstra();
+}
+
+enviarMensaje(destino, mensaje) {
+  if (this.topologia[this.nombre] && this.topologia[this.nombre].includes(destino)) {
+      // Verificar si el destino está en la lista de vecinos del nodo actual
+      console.log(`Mensaje enviado desde ${this.nombre} a ${destino}: ${mensaje}`);
+  } else {
+      console.log(`No existe una relación directa entre ${this.nombre} y ${destino}. No se puede enviar el mensaje.`);
   }
+}
 
   mostrarTablaNodos() {
     console.log("Tabla de nodos con sus pesos:");
@@ -81,12 +91,12 @@ class LinkState {
 
   loadTopology() {
     try {
-      const data = fs.readFileSync('topo-g4.txt', 'utf8');
-      const topology = JSON.parse(data);
-      this.topologia = topology.config; // Asignar la topología desde el archivo
+        const data = fs.readFileSync(topog4, 'utf8');
+        const topology = JSON.parse(data);
+        this.topologia = topology.config;
     } catch (err) {
-      this.topologia = {};
-      console.error('Error al cargar la topología desde el archivo:', err);
+        this.topologia = {};
+        console.error('Error al cargar la topología desde el archivo:', err);
     }
   }
 
@@ -142,14 +152,15 @@ class LinkState {
 const node = new LinkState();
 
 async function processLogin(user, password) {
-    const parts = user.split('@');
-    const username = parts[0];
+  const parts = user.split('@');
+  const username = parts[0];
 
-    console.log(`\n--- Bienvenida ${username} ---`);
+  console.log(`\n--- Bienvenida ${username} ---`);
 
-    await getTopology(topog4);
-    mainMenu();
+  await getTopology(topog4);
+  // mainMenu(); 
 }
+
 
 async function getTopology(filePath) {
   try {
@@ -158,9 +169,20 @@ async function getTopology(filePath) {
 
       // Asigna la topología al objeto de la instancia de la clase LinkState
       node.topologia = topology.config;
+      console.log(node.topologia);
   } catch (err) {
       console.error(`Error al leer ${filePath}: ${err}`);
   }
+
+}
+
+async function main() {
+  await ask_nodo();
+  user = await get_email(namesg4, actual_node);
+  // Asignar el nombre del nodo a la instancia de la clase LinkState
+  node.nombre = actual_node;
+  await processLogin(user, password);
+  mainMenu();
 }
 
 
@@ -179,8 +201,14 @@ function mainMenu() {
 function Choice_FuncMenu(choice) {
   switch (choice) {
       case "1":
-          // Implementa lógica para enviar mensajes
-          break;
+          // Solicita el nodo de destino y el mensaje al usuario
+          rl.question("Nodo de destino: ", function (destino) {
+            rl.question("Mensaje: ", function (mensaje) {
+                node.enviarMensaje(destino, mensaje);
+                mainMenu();
+            });
+        });
+        break;
       case "2":
           // Implementa lógica para recibir mensajes
           break;
@@ -217,10 +245,5 @@ async function get_email(archivo, clave) {
   }
 }
 
-async function main() {
-    await ask_nodo();
-    user = await get_email(namesg4, actual_node);
-    await processLogin(user, password);
-}
 
 main();
