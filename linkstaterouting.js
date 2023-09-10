@@ -42,8 +42,18 @@ class LinkState {
     this.topologia = {}; 
     this.loadTopology();
     this.dijkstra();
-}
+  }
 
+  recibirMensaje(emisor, receptor, mensaje) {
+    if (this.topologia[receptor] && this.topologia[receptor].includes(emisor)) {
+      console.log(`Mensaje recibido de ${emisor}: ${mensaje}`);
+    } else {
+      console.log(`No existe una relación directa entre ${receptor} y ${emisor}. No se puede recibir el mensaje.`);
+    }
+  }
+  
+  
+  
 enviarMensaje(destino, mensaje) {
   if (this.topologia[this.nombre] && this.topologia[this.nombre].includes(destino)) {
       // Verificar si el destino está en la lista de vecinos del nodo actual
@@ -79,15 +89,15 @@ enviarMensaje(destino, mensaje) {
     return path[0];
   }
 
-  recibirMensaje(emisor, receptor, mensaje) {
-    if (this.nombre === receptor) {
-      console.log("Mensaje recibido:", mensaje);
-    } else {
-      console.log("De:", emisor);
-      console.log("Manda:", mensaje);
-      console.log("El siguiente nodo en el camino es:", this.siguienteNodo(receptor));
-    }
-  }
+  // recibirMensaje(emisor, receptor, mensaje) {
+  //   if (this.nombre === receptor) {
+  //     console.log("Mensaje recibido:", mensaje);
+  //   } else {
+  //     console.log("De:", emisor);
+  //     console.log("Manda:", mensaje);
+  //     console.log("El siguiente nodo en el camino es:", this.siguienteNodo(receptor));
+  //   }
+  // }
 
   loadTopology() {
     try {
@@ -169,7 +179,7 @@ async function getTopology(filePath) {
 
       // Asigna la topología al objeto de la instancia de la clase LinkState
       node.topologia = topology.config;
-      console.log(node.topologia);
+      //console.log(node.topologia);
   } catch (err) {
       console.error(`Error al leer ${filePath}: ${err}`);
   }
@@ -194,7 +204,7 @@ function mainMenu() {
   console.log("4. Salir");
 
   rl.question("Ingresa tu selección: ", function (choice) {
-      Choice_FuncMenu(choice);
+    Choice_FuncMenu(choice);
   });
 }
 
@@ -209,9 +219,15 @@ function Choice_FuncMenu(choice) {
             });
         });
         break;
-      case "2":
-          // Implementa lógica para recibir mensajes
+        case "2":
+          rl.question("Nodo de emisor: ", function (emisor) {
+            rl.question("Mensaje: ", function (mensaje) {
+              node.recibirMensaje(emisor, node.nombre, mensaje);
+              mainMenu();
+            });
+          });
           break;
+        
       case "3":
           console.log("Topología:");
           // Imprimir la topología desde la instancia de la clase LinkState
