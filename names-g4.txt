@@ -2,14 +2,14 @@
     "type":"names", 
     "config":
     {
-        "A": "G4_A@alumchat.xyz", 
-        "B": "G4_B@alumchat.xyz", 
-        "C": "G4_C@alumchat.xyz", 
-        "D": "G4_D@alumchat.xyz",  
-        "E": "G4_E@alumchat.xyz", 
-        "F": "G4_F@alumchat.xyz",  
-        "G": "G4_G@alumchat.xyz",  
-        "H": "G4_H@alumchat.xyz", 
-        "I": "G4_I@alumchat.xyz"
+        "A": "dacbA@alumchat.xyz", 
+        "B": "dacbB@alumchat.xyz", 
+        "C": "dacbC@alumchat.xyz", 
+        "D": "dacbD@alumchat.xyz",  
+        "E": "dacbE@alumchat.xyz", 
+        "F": "dacbF@alumchat.xyz",  
+        "G": "dacbG@alumchat.xyz",  
+        "H": "dacbH@alumchat.xyz", 
+        "I": "dacbI@alumchat.xyz"
     } 
 }
