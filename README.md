@@ -9,10 +9,10 @@ Redes
 
 
 ## **How to run**
-### Hooding
+### Flooding
 ```
-cd ./Hooding
+cd ./Flooding
 ```
 ```
-node Hooding.js
+node main.js
 ```
